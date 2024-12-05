@@ -1,0 +1,168 @@
+// package processmanager
+
+// import (
+// 	"context"
+// 	"fmt"
+// 	"sync"
+// 	"time"
+
+// 	"github.com/176org/system-c/pkg/logger"
+// )
+
+
+
+
+// type ProcessTracker struct {
+// 	activeContexts sync.Map
+// 	metadata       sync.Map
+// 	logger         *logger.Logger
+// 	timeoutEnabled bool
+// 	stopCleanup    chan struct{}
+// }
+
+// // ProcessMetadata provides additional information about a tracked process
+// type ProcessMetadata struct {
+// 	ID        string
+// 	StartTime time.Time
+// 	Timeout   time.Duration
+// }
+
+// // ProcessConfig allows configuring process tracking options
+// type ProcessConfig struct {
+// 	EnableTimeoutTracking bool
+// 	CleanupInterval       time.Duration
+// }
+
+// func NewProcessTracker(log *logger.Logger, config ProcessConfig) *ProcessTracker {
+// 	pt := &ProcessTracker{
+// 		logger:         log,
+// 		timeoutEnabled: config.EnableTimeoutTracking,
+// 		stopCleanup:    make(chan struct{}),
+// 	}
+
+// 	if config.EnableTimeoutTracking {
+// 		go pt.startTimeoutCleanup(config.CleanupInterval)
+// 	}
+
+// 	return pt
+// }
+
+// func (pt *ProcessTracker) AddContext(id string, cancel context.CancelFunc) error {
+// 	_, loaded := pt.activeContexts.LoadOrStore(id, cancel)
+// 	if loaded {
+// 		pt.logger.Warn("Duplicate process ID", logger.Zap("processID", id))
+// 		return fmt.Errorf("context with ID %s already exists", id)
+// 	}
+// 	pt.logger.Info("Context added", logger.Zap("processID", id))
+// 	return nil
+// }
+
+// func (pt *ProcessTracker) AddContextWithTimeout(id string, cancel context.CancelFunc, timeout time.Duration) error {
+// 	if !pt.timeoutEnabled {
+// 		return fmt.Errorf("timeout tracking is disabled")
+// 	}
+// 	if err := pt.AddContext(id, cancel); err != nil {
+// 		return err
+// 	}
+// 	pt.metadata.Store(id, ProcessMetadata{
+// 		ID:        id,
+// 		StartTime: time.Now(),
+// 		Timeout:   timeout,
+// 	})
+// 	return nil
+// }
+
+// // RemoveContext removes a context from tracking
+// func (pt *ProcessTracker) RemoveContext(id string) {
+// 	if _, exists := pt.activeContexts.Load(id); exists {
+// 		pt.activeContexts.Delete(id)
+// 		pt.metadata.Delete(id)
+// 		pt.logger.Info("Context removed", logger.Zap("processID", id))
+// 	}
+// }
+
+// // ListActiveProcesses returns a list of active process IDs
+
+// func (pt *ProcessTracker) ListActiveProcesses() []string {
+// 	processes := []string{}
+// 	pt.activeContexts.Range(func(key, _ interface{}) bool {
+// 		processes = append(processes, key.(string))
+// 		return true
+// 	})
+// 	return processes
+// }
+
+// // CancelAllContexts cancels all tracked contexts
+// func (pt *ProcessTracker) CancelAllContexts() {
+// 	pt.activeContexts.Range(func(key, value interface{}) bool {
+// 		id := key.(string)
+// 		cancel := value.(context.CancelFunc)
+// 		cancel()
+// 		pt.activeContexts.Delete(id)
+// 		pt.metadata.Delete(id)
+// 		pt.logger.Warn("Process forcibly cancelled", logger.Zap("processID", id))
+// 		return true
+// 	})
+// }
+
+// // EnforceShutdown provides a controlled shutdown mechanism
+// func (pt *ProcessTracker) EnforceShutdown(force bool) error {
+// 	activeProcesses := pt.ListActiveProcesses()
+
+// 	if len(activeProcesses) > 0 {
+// 		// Log warning with active processes
+// 		pt.logger.LogProcessEvent("system",
+// 			logger.StateRunning,
+// 			"shutdown_attempt",
+// 			map[string]interface{}{
+// 				"active_processes": activeProcesses,
+// 				"force_shutdown":   force,
+// 			})
+
+// 		if !force {
+// 			return fmt.Errorf("cannot shutdown. Active processes: %v", activeProcesses)
+// 		}
+// 	}
+
+// 	pt.CancelAllContexts()
+// 	return nil
+// }
+
+// // startTimeoutCleanup handles periodic cleanup of expired processes
+// func (pt *ProcessTracker) startTimeoutCleanup(interval time.Duration) {
+// 	ticker := time.NewTicker(interval)
+// 	defer ticker.Stop()
+
+// 	for {
+// 		select {
+// 		case <-pt.stopCleanup:
+// 			return
+// 		case <-ticker.C:
+// 			pt.cleanExpiredProcesses()
+// 		}
+// 	}
+// }
+
+// // cleanExpiredProcesses removes processes that have exceeded their timeout
+// func (pt *ProcessTracker) cleanExpiredProcesses() {
+// 	now := time.Now()
+// 	pt.metadata.Range(func(key, value interface{}) bool {
+// 		id := key.(string)
+// 		metadata := value.(ProcessMetadata)
+// 		if now.Sub(metadata.StartTime) > metadata.Timeout {
+// 			pt.logger.Warn("Process timeout detected", logger.Zap("processID", id))
+// 			if cancelFunc, ok := pt.activeContexts.Load(id); ok {
+// 				cancelFunc.(context.CancelFunc)()
+// 				pt.activeContexts.Delete(id)
+// 				pt.metadata.Delete(id)
+// 			}
+// 		}
+// 		return true
+// 	})
+// }
+
+// // Stop stops the timeout tracking and cleanup goroutines
+// func (pt *ProcessTracker) Stop() {
+// 	close(pt.stopCleanup)
+// 	pt.logger.Info("ProcessTracker stopped")
+// }
