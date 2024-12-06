@@ -88,7 +88,7 @@ func (pm *ProcessManager) RegisterProcess(id string, process DatabaseProcess) er
 	}
 
 	pm.processes.Store(id, instance)
-	pm.logger.Info("Process registered", logger.Zap("processID", id))
+	pm.logger.Info("Process registered", pm.logger.Zap("processID", id))
 	return nil
 }
 

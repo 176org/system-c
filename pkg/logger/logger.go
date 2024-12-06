@@ -13,7 +13,22 @@ type Logger struct {
 }
 
 // Zap creates a zap field with type-safe conversion
-func Zap(key string, value interface{}) zap.Field {
+// func Zap(key string, value interface{}) zap.Field {
+// 	switch v := value.(type) {
+// 	case string:
+// 		return zap.String(key, v)
+// 	case int:
+// 		return zap.Int(key, v)
+// 	case bool:
+// 		return zap.Bool(key, v)
+// 	case error:
+// 		return zap.Error(v)
+// 	default:
+// 		return zap.Any(key, value)
+// 	}
+// }
+
+func (l *Logger) Zap(key string, value interface{}) zap.Field {
 	switch v := value.(type) {
 	case string:
 		return zap.String(key, v)

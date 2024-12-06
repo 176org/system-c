@@ -57,7 +57,7 @@ func (p *PostgresConnectionProcess) Initialize(ctx context.Context) error {
 	defer p.mu.Unlock()
 
 	p.logger.ProcessStateChange("postgres-connection", p.state, "INITIALIZING",
-		logger.Zap("connectionString", p.config))
+		p.logger.Zap("connectionString", p.config))
 
 	p.state = "INITIALIZING"
 	p.logger.Info("Initializing Postgres connection")
@@ -83,7 +83,7 @@ func (p *PostgresConnectionProcess) Connect(ctx context.Context) error {
 		p.lastError = err
 		p.logger.ProcessStateChange("postgres-connection", "CONNECTING", "ERROR")
 		p.logger.Error("Failed to parse Postgres config",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return fmt.Errorf("failed to parse postgres config: %v", err)
 	}
 
@@ -93,7 +93,7 @@ func (p *PostgresConnectionProcess) Connect(ctx context.Context) error {
 		p.lastError = err
 		p.logger.ProcessStateChange("postgres-connection", "CONNECTING", "ERROR")
 		p.logger.Error("Unable to connect to database",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return fmt.Errorf("unable to connect to database: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func (p *PostgresConnectionProcess) Connect(ctx context.Context) error {
 		p.lastError = err
 		p.logger.ProcessStateChange("postgres-connection", "CONNECTING", "ERROR")
 		p.logger.Error("Failed to acquire database connection",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return fmt.Errorf("failed to acquire connection: %v", err)
 	}
 	defer conn.Release()
@@ -117,7 +117,7 @@ func (p *PostgresConnectionProcess) Connect(ctx context.Context) error {
 		p.lastError = err
 		p.logger.ProcessStateChange("postgres-connection", "CONNECTING", "ERROR")
 		p.logger.Error("Database ping failed",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return fmt.Errorf("database ping failed: %v", err)
 	}
 
@@ -160,7 +160,7 @@ func (p *PostgresConnectionProcess) IsHealthy(ctx context.Context) bool {
 	conn, err := p.pool.Acquire(ctx)
 	if err != nil {
 		p.logger.Error("Failed to acquire connection",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return false
 	}
 	defer conn.Release()
@@ -171,7 +171,7 @@ func (p *PostgresConnectionProcess) IsHealthy(ctx context.Context) bool {
 
 	if err != nil {
 		p.logger.Error("Health check query failed",
-			logger.Zap("error", err))
+			p.logger.Zap("error", err))
 		return false
 	}
 
@@ -186,7 +186,7 @@ type PostgresRecoveryStrategy struct {
 func (s *PostgresRecoveryStrategy) Recover(ctx context.Context, processID string) error {
 	// Log recovery attempt
 	s.Logger.Warn("Attempting Postgres connection recovery",
-		logger.Zap("processID", processID))
+		s.Logger.Zap("processID", processID))
 
 	// Implement specific recovery logic
 	details := map[string]interface{}{
